@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>title</title>
+    <script src="./js/geckos.io-client.1.6.1.min.js"></script>
+  </head>
+
+  <body>
+    <style>
+      html,
+      body {
+        padding: 0;
+        margin: 0;
+      }
+      #root {
+        background-color: darkcyan;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      #canvas {
+        background-color: white;
+        max-width: 100%;
+      }
+    </style>
+
+    <div id="root">
+      <canvas id="canvas" width="800" height="600"></canvas>
+    </div>
+
+    <script>
+      'use strict'
+
+      const url = 'http://localhost'
+
+      var canvas = document.getElementById('canvas')
+      var ctx = canvas.getContext('2d')
+
+      const draw = data => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+        data.forEach(d => {
+          const { player } = d
+
+          ctx.beginPath()
+          ctx.arc(player.x, player.y, 50, 0, 2 * Math.PI)
+
+          const color = '#' + player.color.toString(16).split('.')[0]
+
+          ctx.fillStyle = color
+          ctx.fill()
+        })
+      }
+
+      var channel = geckos({ url })
+
+      channel.onConnect(error => {
+        console.log('your are connected')
+
+        channel.on('updates', data => {
+          draw(data)
+        })
+      })
+    </script>
+  </body>
+</html>
