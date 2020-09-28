@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "start": "npm run dev",
-    "client": "NODE_ENV=production client.js",
+    "client": "NODE_ENV=production node client.js",
     "server": "NODE_ENV=production node server.js",
     "www": "live-server --port=8080",
     "dev": "npm-run-all --parallel dev:* www",
