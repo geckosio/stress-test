@@ -42,13 +42,11 @@
       const draw = data => {
         ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-        data.forEach(d => {
-          const { player } = d
-
+        data.forEach(player => {
           ctx.beginPath()
           ctx.arc(player.x, player.y, 50, 0, 2 * Math.PI)
 
-          const color = '#' + player.color.toString(16).split('.')[0]
+          const color = 'red' //'#' + player.color.toString(16).split('.')[0]
 
           ctx.fillStyle = color
           ctx.fill()
@@ -60,8 +58,20 @@
       channel.onConnect(error => {
         console.log('your are connected')
 
-        channel.on('updates', data => {
-          draw(data)
+        channel.onRaw(buffer => {
+          const data = []
+
+          const view = new DataView(buffer)
+          for (let i = 0; i < buffer.byteLength / 8; i++) {
+            const player = {
+              x: view.getInt32(i * 8) / 100,
+              y: view.getInt32(i * 8 + 4) / 100
+            }
+            data.push(player)
+          }
+
+          //console.log(data[0], data[1], data[2])
+          if (data.length > 0) draw(data)
         })
       })
     </script>
