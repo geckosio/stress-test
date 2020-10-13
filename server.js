@@ -1,7 +1,7 @@
 const geckos = require('@geckos.io/server').default
 const { iceServers } = require('@geckos.io/server')
 
-const FPS = 1000 / 40
+const FPS = 1000 / 60
 
 const io = geckos({
   iceServers: process.env.NODE_ENV === 'production' ? iceServers : iceServers
