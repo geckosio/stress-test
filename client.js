@@ -1,9 +1,9 @@
 const cluster = require('cluster')
 const numCPUs = require('os').cpus().length
 
-const FORKS = Math.round(numCPUs / 2)
-const TOTAL_CONNECTIONS = 24
-const FPS = 1000 / 60
+const FORKS = 1 //Math.round(numCPUs / 2)
+const TOTAL_CONNECTIONS = 1
+const FPS = 1000 / 30
 
 const url = 'http://localhost:9208'
 
@@ -14,7 +14,7 @@ if (cluster.isMaster) {
   }
 } else {
   const fetch = require('node-fetch')
-  const { RTCPeerConnection, RTCSessionDescription } = require('wrtc')
+  const nodeDataChannel = require('node-datachannel')
 
   const toFixed = n => {
     return parseFloat(n.toFixed(2))
@@ -23,16 +23,16 @@ if (cluster.isMaster) {
   const main = () => {
     let dataChannel
 
-    const onDataChannel = ev => {
-      const { channel } = ev
-      dataChannel = channel
+    // const onDataChannel = ev => {
+    //   const { channel } = ev
+    //   dataChannel = channel
 
-      dataChannel.binaryType = 'arraybuffer'
+    //   dataChannel.binaryType = 'arraybuffer'
 
-      dataChannel.onmessage = ev => {
-        // console.log('message', ev)
-      }
-    }
+    //   dataChannel.onmessage = ev => {
+    //     // console.log('message', ev)
+    //   }
+    // }
 
     const connect = async () => {
       const host = `${url}/.wrtc/v1`
@@ -57,47 +57,73 @@ if (cluster.isMaster) {
 
       const { id, localDescription } = this.remotePeerConnection
 
-      const configuration = {
-        // @ts-ignore
-        sdpSemantics: 'unified-plan'
-      }
-
-      const localPeerConnection = new RTCPeerConnection(configuration)
-
-      await localPeerConnection.setRemoteDescription(localDescription)
-      localPeerConnection.addEventListener('datachannel', onDataChannel, {
-        once: true
+      const localPeerConnection = new nodeDataChannel.PeerConnection('Peer2', {
+        iceServers: []
       })
 
-      const originalAnswer = await localPeerConnection.createAnswer()
-      const updatedAnswer = new RTCSessionDescription({
-        type: 'answer',
-        sdp: originalAnswer.sdp
+      localPeerConnection.onStateChange(state => {
+        console.log('localPeerConnection State:', state)
       })
 
-      await localPeerConnection.setLocalDescription(updatedAnswer)
+      localPeerConnection.onLocalDescription((sdp, type) => {
+        fetch(`${host}/connections/${id}/remote-description`, {
+          method: 'POST',
+          body: JSON.stringify({ sdp, type }),
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+      })
 
-      await fetch(`${host}/connections/${id}/remote-description`, {
-        method: 'POST',
-        body: JSON.stringify(localPeerConnection.localDescription),
-        headers: {
-          'Content-Type': 'application/json'
+      localPeerConnection.setRemoteDescription(
+        localDescription.sdp,
+        localDescription.type
+      )
+
+      const res = await fetch(
+        `${host}/connections/${id}/additional-candidates`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
         }
+      )
+      const candidates = await res.json()
+      candidates.forEach(c => {
+        localPeerConnection.addRemoteCandidate(c.candidate, c.sdpMid)
+      })
+
+      // await localPeerConnection.setRemoteDescription(localDescription)
+      // localPeerConnection.addEventListener('datachannel', onDataChannel, {
+      //   once: true
+      // })
+
+      // const originalAnswer = await localPeerConnection.createAnswer()
+      // const updatedAnswer = new RTCSessionDescription({
+      //   type: 'answer',
+      //   sdp: originalAnswer.sdp
+      // })
+
+      // await localPeerConnection.setLocalDescription(updatedAnswer)
+
+      dataChannel = localPeerConnection.createDataChannel('geckos.io')
+
+      dataChannel.onMessage(msg => {
+        console.log('Peer1 Received Msg:', msg)
       })
 
       const waitForDataChannel = () => {
         return new Promise(resolve => {
-          localPeerConnection.addEventListener(
-            'datachannel',
-            () => {
-              resolve()
-            },
-            { once: true }
-          )
+          dataChannel.onOpen(() => {
+            resolve()
+          })
         })
       }
 
-      if (!dataChannel) await waitForDataChannel()
+      if (!dataChannel.isOpen()) await waitForDataChannel()
+
+      console.log('isopen')
 
       let player = {
         id: Math.random().toString(36).substr(2, 9),
@@ -128,7 +154,19 @@ if (cluster.isMaster) {
         view.setInt32(0, player.x * 100)
         view.setInt32(4, player.y * 100)
 
-        dataChannel.send(buffer)
+        if (dataChannel.isOpen()) {
+          dataChannel.sendMessage('Hello From Peer2')
+          dataChannel.sendMessageBinary(Buffer.from('Hello From Peer2'))
+          dataChannel.sendMessageBinary(Buffer.alloc(4))
+          dataChannel.sendMessage(
+            '-' + JSON.stringify({ x: player.x * 100, y: player.y * 100 })
+          )
+          dataChannel.sendMessage(
+            JSON.stringify({
+              message: { x: player.x * 100, y: player.y * 100 }
+            })
+          )
+        }
       }, FPS)
     }
 
@@ -140,6 +178,6 @@ if (cluster.isMaster) {
   for (let i = 0; i < TOTAL_CONNECTIONS / FORKS; i++) {
     setTimeout(() => {
       main()
-    }, Math.random() * 1_000)
+    }, Math.random() * 1_000 + 2_000)
   }
 }

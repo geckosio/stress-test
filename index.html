@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <title>title</title>
-    <script src="./js/geckos.io-client.1.6.1.min.js"></script>
+    <script src="./js/geckos.io-client.2.0.0-dev.0.min.js"></script>
   </head>
 
   <body>
@@ -58,17 +58,19 @@
       channel.onConnect(error => {
         console.log('your are connected')
 
-        channel.onRaw(buffer => {
-          const data = []
+        channel.onRaw(b => {
+          const buffer = b.substring(1)
+          const data = JSON.parse(buffer)
+          // console.log('data', data)
+          // return
 
-          const view = new DataView(buffer)
-          for (let i = 0; i < buffer.byteLength / 8; i++) {
+          data.forEach(d => {
             const player = {
-              x: view.getInt32(i * 8) / 100,
-              y: view.getInt32(i * 8 + 4) / 100
+              x: d.x,
+              y: d.y
             }
             data.push(player)
-          }
+          })
 
           //console.log(data[0], data[1], data[2])
           if (data.length > 0) draw(data)
