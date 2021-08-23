@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <title>title</title>
-    <script src="./js/geckos.io-client.1.6.1.min.js"></script>
+    <script src="./js/geckos.io-client.2.0.0.min.js"></script>
   </head>
 
   <body>
@@ -38,6 +38,7 @@
 
       var canvas = document.getElementById('canvas')
       var ctx = canvas.getContext('2d')
+      let tick = 0
 
       const draw = data => {
         ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -58,8 +59,10 @@
       channel.onConnect(error => {
         console.log('your are connected')
 
+        let data = []
+
         channel.onRaw(buffer => {
-          const data = []
+          tick++
 
           const view = new DataView(buffer)
           for (let i = 0; i < buffer.byteLength / 8; i++) {
@@ -70,8 +73,10 @@
             data.push(player)
           }
 
-          //console.log(data[0], data[1], data[2])
-          if (data.length > 0) draw(data)
+          if (data.length > 0 && tick % 2 === 0) {
+            draw(data)
+            data = []
+          }
         })
       })
     </script>
